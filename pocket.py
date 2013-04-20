@@ -26,9 +26,26 @@ class API(object):
     def __init__(self, consumer_key, redirect_uri='local:callback'):
         self.consumer_key = consumer_key
         self.redirect_uri = redirect_uri
+        self.reset()
+
+    def reset(self):
         self._last = self._login = self._request_token = None
         self._actions = []
         self.limits = {}
+
+    def login(self, username=None, access_token=None):
+        if self._login:
+            pass
+        elif username and access_token:
+            self._login = {'username': username, 'access_token': access_token}
+        else:
+            self._login = self.post('oauth/authorize', code=self.request_token)
+
+        return self._login
+
+    @property
+    def authenticated(self):
+        return bool(self._login)
 
     def post(self, endpoint, **params):
         headers = {'X-Accept': 'application/json'}
@@ -64,19 +81,6 @@ class API(object):
     def auth_url(self):
         return AUTH_BASE + '?request_token={}&redirect_uri={}'.format(
             self.request_token, self.redirect_uri)
-
-    def login(self):
-        if self._login:
-            return
-
-        res = self.post('oauth/authorize', code=self.request_token)
-        self._login = res
-
-        return True
-
-    @property
-    def authenticated(self):
-        return bool(self._login)
 
     @property
     def access_token(self):
