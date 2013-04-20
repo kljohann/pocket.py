@@ -1,5 +1,6 @@
 #!/usr/bin/python2
 
+from datetime import datetime
 import time
 import requests
 import json
@@ -142,13 +143,30 @@ class API(object):
         :raises: See :meth:`post`.
         """
 
-        if 'since' in params and hasattr(params['since'], 'timetuple'):
+        if 'since' in params and isinstance(params['since'], datetime):
             params['since'] = time.mktime(params['since'].timetuple())
 
         if 'favorite' in params:
             params['favorite'] = int(bool(params['favorite']))
 
-        return self.post('get', **params)
+        return self._cleanup_json(self.post('get', **params))
+
+    @classmethod
+    def _cleanup_json(cls, json):
+        for k, v in json.items():
+            try:
+                v = int(v)
+            except (ValueError, TypeError):
+                pass
+
+            if k.startswith('time_') or k in ['since']:
+                v = datetime.fromtimestamp(v) if v else None
+            if isinstance(v, dict):
+                v = cls._cleanup_json(v)
+
+            json[k] = v
+
+        return json
 
     def send(self):
         """Send all queued actions to the server.
@@ -163,8 +181,15 @@ class API(object):
 
         res = self.post('send', actions=json.dumps(self._actions))
 
-        # post did not throw an error, clear queue.
+        # post did not throw an error, return results merged into queue.
+        actions = self._actions
         self._actions = []
+
+        results = res.pop('action_results', [False for a in self._actions])
+        for action, result in zip(actions, results):
+            action['result'] = result
+        res['actions'] = actions
+
         return res
 
     def queue(self, action, **params):
@@ -177,6 +202,10 @@ class API(object):
         """
 
         params['action'] = action
+
+        if 'time' in params and isinstance(params['time'], datetime):
+            params['time'] = time.mktime(params['time'].timetuple())
+
         self._actions.append(params)
 
     def add(self, url, **params):
