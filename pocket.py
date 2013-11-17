@@ -58,7 +58,7 @@ class API(object):
         res = requests.post(API_BASE + endpoint, params, headers=headers)
 
         self._last = res
-        for k, v in res.headers.items():
+        for k, v in res.headers.iteritems():
             k = k.lower()
             if k.startswith('x-limit'):
                 self.limits[k] = int(v)
@@ -97,14 +97,14 @@ class API(object):
 
     @property
     def remaining_calls(self):
-        limits = [v for k, v in self.limits.items()
+        limits = [v for k, v in self.limits.iteritems()
                   if k.endswith('remaining')]
         if limits:
             return min(limits)
 
     @property
     def seconds_until_reset(self):
-        limits = [v for k, v in self.limits.items()
+        limits = [v for k, v in self.limits.iteritems()
                   if k.endswith('reset')]
         if limits:
             return max(limits)
@@ -153,7 +153,7 @@ class API(object):
 
     @classmethod
     def _cleanup_json(cls, json):
-        for k, v in json.items():
+        for k, v in json.iteritems():
             try:
                 v = int(v)
             except (ValueError, TypeError):
